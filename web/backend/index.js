@@ -39,9 +39,8 @@ const shopify = shopifyApp({
     apiKey: process.env.SHOPIFY_API_KEY,
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
     appUrl: process.env.HOST,
-    apiVersion: ApiVersion.January24,
+    apiVersion: ApiVersion.October24,
     scopes: ["read_products", "write_products", "read_files", "write_files"],
-    // Do NOT pass restResources — causes crash with empty object
   },
   auth: {
     path: "/api/auth",
