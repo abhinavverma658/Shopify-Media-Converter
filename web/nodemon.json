@@ -1,0 +1,9 @@
+{
+  "watch": ["backend"],
+  "ext": "js,mjs,json",
+  "ignore": ["node_modules"],
+  "exec": "node --experimental-vm-modules backend/index.js",
+  "env": {
+    "NODE_ENV": "development"
+  }
+}

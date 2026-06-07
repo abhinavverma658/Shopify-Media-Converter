@@ -1,0 +1,19 @@
+{
+  "name": "shopify-media-converter",
+  "version": "1.0.0",
+  "description": "Shopify app to bulk convert product images (JPG/PNG → WebP) and videos (MP4 → WebM)",
+  "private": true,
+  "workspaces": [
+    "web"
+  ],
+  "scripts": {
+    "dev": "shopify app dev",
+    "build": "npm run build --workspace=web",
+    "start": "npm run start --workspace=web",
+    "deploy": "shopify app deploy"
+  },
+  "devDependencies": {
+    "@shopify/cli": "^3.0.0",
+    "@shopify/app": "^3.0.0"
+  }
+}
