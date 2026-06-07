@@ -1,7 +1,7 @@
 // web/backend/index.js
 import "@shopify/shopify-api/adapters/node";
 import { shopifyApp } from "@shopify/shopify-app-express";
-import { SQLiteSessionStorage } from "@shopify/shopify-app-session-storage-sqlite";
+import { MemorySessionStorage } from "@shopify/shopify-app-session-storage-memory";
 import { ApiVersion } from "@shopify/shopify-api";
 import express from "express";
 import cors from "cors";
@@ -18,19 +18,30 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = parseInt(process.env.BACKEND_PORT || process.env.PORT || "3000", 10);
-const STATIC_PATH =
-  process.env.NODE_ENV === "production"
-    ? path.join(__dirname, "../frontend/dist")
-    : path.join(__dirname, "../frontend");
+const PORT = parseInt(process.env.PORT || "3000", 10);
+const STATIC_PATH = path.join(__dirname, "../frontend/dist");
 
-const DB_PATH = path.join(__dirname, "../../database.sqlite");
+// Validate required env vars
+const required = ["SHOPIFY_API_KEY", "SHOPIFY_API_SECRET", "HOST"];
+for (const key of required) {
+  if (!process.env[key]) {
+    console.error(`❌ Missing required env var: ${key}`);
+    process.exit(1);
+  }
+}
+
+console.log("✅ Env vars OK");
+console.log(`   HOST: ${process.env.HOST}`);
+console.log(`   PORT: ${PORT}`);
 
 const shopify = shopifyApp({
   api: {
+    apiKey: process.env.SHOPIFY_API_KEY,
+    apiSecretKey: process.env.SHOPIFY_API_SECRET,
+    appUrl: process.env.HOST,
     apiVersion: ApiVersion.January24,
-    restResources: {},
-    billing: undefined,
+    scopes: ["read_products", "write_products", "read_files", "write_files"],
+    // Do NOT pass restResources — causes crash with empty object
   },
   auth: {
     path: "/api/auth",
@@ -39,13 +50,16 @@ const shopify = shopifyApp({
   webhooks: {
     path: "/api/webhooks",
   },
-  sessionStorage: new SQLiteSessionStorage(DB_PATH),
+  sessionStorage: new MemorySessionStorage(),
 });
 
 const app = express();
 app.use(cors());
 
-// Shopify auth routes
+// Health check
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
+
+// Shopify auth
 app.get(shopify.config.auth.path, shopify.auth.begin());
 app.get(
   shopify.config.auth.callbackPath,
@@ -62,7 +76,7 @@ app.post(
 
 app.use(express.json());
 
-// API Routes (protected)
+// Protected API routes
 app.use("/api/*", shopify.validateAuthenticatedSession());
 app.use("/api/conversion", conversionRouter);
 app.use("/api/products", productsRouter);
@@ -75,9 +89,14 @@ app.use("/*", shopify.ensureInstalledOnShop(), async (_req, res) => {
   res.sendFile(path.join(STATIC_PATH, "index.html"));
 });
 
-// Setup background job queue
-setupQueue();
+// Queue
+try {
+  setupQueue();
+  console.log("✅ Queue ready");
+} catch (err) {
+  console.warn("⚠️ Queue setup failed:", err.message);
+}
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
